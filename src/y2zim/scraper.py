@@ -75,6 +75,7 @@ class Y2zim:
         no_zim,
         fname,
         debug,
+        tmp_dir,
         keep_build_dir,
         max_concurrency,
         youtube_store,
