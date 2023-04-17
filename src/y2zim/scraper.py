@@ -1074,7 +1074,6 @@ class Y2zim:
                         description="",
                     )
                 )
-            
 
             for playlist in self.playlists:
                 # retrieve list of videos for PL
@@ -1108,3 +1107,10 @@ class Y2zim:
 
         # clean videos left out in videos directory
         remove_unused_videos(videos)
+
+class Playlist:
+                def __init__(self, playlist_id, slug, title, description):
+                    self.playlist_id = playlist_id
+                    self.slug = slug
+                    self.title = title
+                    self.description = description
