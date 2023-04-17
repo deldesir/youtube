@@ -319,7 +319,7 @@ class Y2zim:
                 fpath=self.output_dir / self.fname,
                 name=self.name,
                 main_page="home.html",
-                illustration="favicon.jpg",
+                illustration="favicon.png",
                 title=self.title,
                 description=self.title,
                 language=self.language,
@@ -883,17 +883,19 @@ class Y2zim:
         # convert to png
         if self.profile_path.suffix != ".png":
             image = Image.open(self.profile_path)
-            png_image = image.convert("RGB")
-            png_image.save(self.profile_path.with_suffix(".png"))
-            self.profile_path = self.profile_path.with_suffix(".png")
+            # resize to 48x48
+            resized_image = image.resize((48, 48))
+            # Convert the resized image to PNG format and save it to favicon.png
+            png_image = resized_image.convert("RGBA")
+            png_image.save(self.build_dir.joinpath("favicon.png"), format="png")
             
-        resize_image(
-            self.profile_path,
-            width=48,
-            height=48,
-            method="thumbnail",
-            dst=self.build_dir.joinpath("favicon.png"),
-        )
+        # resize_image(
+        #     self.profile_path,
+        #     width=48,
+        #     height=48,
+        #     method="thumbnail",
+        #     dst=self.build_dir.joinpath("favicon.png"),
+        # )
 
     def make_html_files(self, actual_videos_ids):
         """make up HTML structure to read the content
