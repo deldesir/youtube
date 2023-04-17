@@ -1011,12 +1011,18 @@ class Y2zim:
         )
         with open(self.build_dir.joinpath("home.html"), "w", encoding="utf-8") as fp:
             fp.write(html)
+            logger.info("Homepage built")
+            # print homepage content
+            print(html)
 
         # rewrite app.js including `format`
         with open(self.assets_dir.joinpath("app.js"), "w", encoding="utf-8") as fp:
             fp.write(
                 env.get_template("assets/app.js").render(video_format=self.video_format)
             )
+            logger.info("app.js rewritten")
+            # print app.js content
+            print(fp.read())
 
         # rewrite app.js including `pagination`
         with open(self.assets_dir.joinpath("db.js"), "w", encoding="utf-8") as fp:
@@ -1074,15 +1080,8 @@ class Y2zim:
             #             description="",
             #         )
             #     )
-
-            for playlist in self.playlists:
-                # retrieve list of videos for PL
-                playlist_videos = load_json(
-                    self.cache_dir, f"playlist_{playlist.playlist_id}_videos"
-                )
-                print("FIRST PLAYLIST VIDEOS", playlist_videos)
-                if self.youtube_id is None and playlist_videos is None:
-                    # there is no playlist, so we need to create one
+            
+            # there is no playlist, so we need to create one
                     # no need to waste quota on this
                     playlist_id = "all_videos"
                     playlist_items = [
@@ -1114,6 +1113,15 @@ class Y2zim:
                     )
                     playlist_videos = playlist_items
                     print("SECOND PLAYLIST_VIIDEOS", playlist_videos)
+
+            for playlist in self.playlists:
+                # retrieve list of videos for PL
+                # playlist_videos = load_json(
+                #     self.cache_dir, f"playlist_{playlist.playlist_id}_videos"
+                # )
+                # print("FIRST PLAYLIST VIDEOS", playlist_videos)
+                # if self.youtube_id is None and playlist_videos is None:
+                    
                 # replace video titles if --custom-titles is used
                 if self.custom_titles:
                     replace_titles(playlist_videos, self.custom_titles)
