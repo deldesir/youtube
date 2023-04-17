@@ -878,6 +878,13 @@ class Y2zim:
         self.main_color = self.main_color or profile_main
         self.secondary_color = self.secondary_color or profile_secondary
 
+        # convert to png
+        if self.profile_path.suffix != ".png":
+            image = Image.open(self.profile_path)
+            png_image = image.convert("RGB")
+            png_image.save(self.profile_path.with_suffix(".png"))
+            self.profile_path = self.profile_path.with_suffix(".png")
+            
         resize_image(
             self.profile_path,
             width=48,
