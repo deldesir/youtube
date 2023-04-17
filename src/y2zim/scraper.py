@@ -133,9 +133,6 @@ class Y2zim:
         tmp_dir.mkdir(parents=True, exist_ok=True)
         self.build_dir = tmp_dir.joinpath("build")
         self.build_dir.mkdir(parents=True, exist_ok=True)
-        self.cache_dir = tmp_dir.joinpath("cache")
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
-        
 
 
         # process-related
@@ -191,7 +188,10 @@ class Y2zim:
 
     @property
     def cache_dir(self):
-        return self.build_dir.joinpath("cache")
+        # create cache dir if not exists
+        cache_dir = self.build_dir.joinpath("cache")
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir
 
     @property
     def videos_dir(self):
