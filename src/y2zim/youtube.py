@@ -359,7 +359,7 @@ def save_channel_branding(channels_dir, channel_id, save_banner=False):
             break
 
     channel_dir = channels_dir.joinpath(channel_id)
-    channel_dir.mkdir(exist_ok=True)
+    channel_dir.mkdir(parents=True, exist_ok=True)
 
     profile_path = channel_dir.joinpath("profile.jpg")
     if not profile_path.exists():
