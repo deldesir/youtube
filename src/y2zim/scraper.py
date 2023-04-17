@@ -1080,6 +1080,7 @@ class Y2zim:
                 playlist_videos = load_json(
                     self.cache_dir, f"playlist_{playlist.playlist_id}_videos"
                 )
+                print("FIRST PLAYLIST VIDEOS", playlist_videos)
                 if self.youtube_id is None and playlist_videos is None:
                     # there is no playlist, so we need to create one
                     # no need to waste quota on this
@@ -1112,13 +1113,10 @@ class Y2zim:
                         )
                     )
                     playlist_videos = playlist_items
+                    print("SECOND PLAYLIST_VIIDEOS", playlist_videos)
                 # replace video titles if --custom-titles is used
                 if self.custom_titles:
                     replace_titles(playlist_videos, self.custom_titles)
-                # filtering-out missing ones (deleted or not downloaded)
-                playlist_videos = list(filter(skip_deleted_videos, playlist_videos))
-                playlist_videos = list(filter(is_present, playlist_videos))
-                playlist_videos = list(filter(has_channel, playlist_videos))
                 # sorting them based on playlist
                 playlist_videos.sort(key=lambda v: v["snippet"]["position"])
 
