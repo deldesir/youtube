@@ -171,6 +171,10 @@ class Y2zim:
             self.locale = setlocale(ROOT_DIR, "en")
 
     @property
+    def root_dir(self):
+        return ROOT_DIR
+
+    @property
     def templates_dir(self):
         return self.root_dir.joinpath("templates")
 
