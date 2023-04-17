@@ -1021,8 +1021,6 @@ class Y2zim:
                 env.get_template("assets/app.js").render(video_format=self.video_format)
             )
             logger.info("app.js rewritten")
-            # print app.js content
-            print(fp.read())
 
         # rewrite app.js including `pagination`
         with open(self.assets_dir.joinpath("db.js"), "w", encoding="utf-8") as fp:
@@ -1031,6 +1029,7 @@ class Y2zim:
                     NB_VIDEOS_PER_PAGE=self.nb_videos_per_page
                 )
             )
+            logger.info("db.js rewritten")
 
         # write list of videos in data.js
         def to_data_js(video):
