@@ -320,7 +320,6 @@ class Y2zim:
                 illustration="favicon.jpg",
                 title=self.title,
                 description=self.title,
-                longdescription=self.description,
                 language=self.language,
                 creator=self.creator,
                 publisher="IIAB",
