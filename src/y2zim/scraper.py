@@ -896,7 +896,7 @@ class Y2zim:
         """
 
         def remove_unused_videos(videos):
-            video_ids = [video["contentDetails"]["videoId"] for video in videos]
+            video_ids = [video["id"] for video in videos]
             for path in self.videos_dir.iterdir():
                 if path.is_dir() and path.name not in video_ids:
                     logger.debug(f"Removing unused video {path.name}")
@@ -904,10 +904,10 @@ class Y2zim:
 
         def is_present(video):
             """whether this video has actually been succeffuly downloaded"""
-            return video["contentDetails"]["videoId"] in actual_videos_ids
+            return video["id"] in actual_videos_ids
 
         def video_has_channel(videos_channels, video):
-            return video["contentDetails"]["videoId"] in videos_channels
+            return video["id"] in videos_channels
 
         def get_subtitles(video_id):
             video_dir = self.videos_dir.joinpath(video_id)
