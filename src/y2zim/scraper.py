@@ -815,9 +815,8 @@ class Y2zim:
         # or channel of first playlist
         if self.youtube_id is not None:
             channels_json = load_json(self.cache_dir, "videos_channels")
-            self.main_channel_id = channels_json[list(channels_json)[1]][
-                "channelId"
-            ]
+            self.main_channel_id = list(channels_json.values())[1]["channelId"]
+            logger.debug(f"Main channel id: {self.main_channel_id}")
         try:
             main_channel_json = get_channel_json(self.main_channel_id)
 
