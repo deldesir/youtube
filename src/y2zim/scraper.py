@@ -546,7 +546,7 @@ class Y2zim:
         # filter_videos = filter(skip_deleted_videos, filter_videos)
         # all_videos = {v["id"]: v for v in filter_videos}
         save_json(self.cache_dir, "videos", all_videos)
-        self.videos_ids = [*all_videos.keys()]
+        self.videos_ids = [*all_videos]
 
     def download_video_files(self, max_concurrency):
 
