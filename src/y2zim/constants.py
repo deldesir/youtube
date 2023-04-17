@@ -25,7 +25,7 @@ YOUTUBE_LANG_MAP = {
     "sh": "srp",  # Serbian
 }
 
-logger = getLogger(NAME, level=logging.DEBUG, file='/output_dir/y2zim.log')
+logger = getLogger(NAME, level=logging.DEBUG, file='output/y2zim.log')
 
 
 with open("/usr/local/etc/ytable/config.json") as f:
