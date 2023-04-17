@@ -133,6 +133,9 @@ class Y2zim:
         tmp_dir.mkdir(parents=True, exist_ok=True)
         self.build_dir = tmp_dir.joinpath("build")
         self.build_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_dir = tmp_dir.joinpath("cache")
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        
 
 
         # process-related
