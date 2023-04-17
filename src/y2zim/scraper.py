@@ -1082,37 +1082,37 @@ class Y2zim:
             #     )
             
             # there is no playlist, so we need to create one
-                    # no need to waste quota on this
-                    playlist_id = "all_videos"
-                    playlist_items = [
-                        {
-                            "snippet": {
-                                "title": video["snippet"]["title"],
-                                "position": i,
-                            },
-                            "contentDetails": {"videoId": video["id"]},
-                        }
-                        for i, video in enumerate(videos)
-                    ]
-                    # write the json file
-                    with open(
-                        self.cache_dir.joinpath(f"playlist_{playlist_id}_videos.json"),
-                        "w",
-                        encoding="utf-8",
-                    ) as fp:
-                        json.dump(playlist_items, fp)
+                # no need to waste quota on this
+                playlist_id = "all_videos"
+                playlist_items = [
+                    {
+                        "snippet": {
+                            "title": video["snippet"]["title"],
+                            "position": i,
+                        },
+                        "contentDetails": {"videoId": video["id"]},
+                    }
+                    for i, video in enumerate(videos)
+                ]
+                # write the json file
+                with open(
+                    self.cache_dir.joinpath(f"playlist_{playlist_id}_videos.json"),
+                    "w",
+                    encoding="utf-8",
+                ) as fp:
+                    json.dump(playlist_items, fp)
 
-                    # create the fake playlist
-                    self.playlists.append(
-                        Playlist(
-                            playlist_id=playlist_id,
-                            slug="all_videos",
-                            title=_("All videos"),
-                            description="",
-                        )
+                # create the fake playlist
+                self.playlists.append(
+                    Playlist(
+                        playlist_id=playlist_id,
+                        slug="all_videos",
+                        title=_("All videos"),
+                        description="",
                     )
-                    playlist_videos = playlist_items
-                    print("SECOND PLAYLIST_VIIDEOS", playlist_videos)
+                )
+                playlist_videos = playlist_items
+                print("SECOND PLAYLIST_VIIDEOS", playlist_videos)
 
             for playlist in self.playlists:
                 # retrieve list of videos for PL
