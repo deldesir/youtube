@@ -722,6 +722,7 @@ class Y2zim:
 
         preset = WebpHigh()
         options_copy = options.copy()
+        video_id = video_id["id"]
         video_location = options_copy["y2z_videos_dir"].joinpath(video_id)
         thumbnail_path = video_location.joinpath("video.webp")
 
@@ -762,7 +763,7 @@ class Y2zim:
 
     def download_subtitles(self, video_id, options):
         """download subtitles for a video"""
-
+        
         options_copy = options.copy()
         options_copy.update({"skip_download": True, "writethumbnail": False})
         try:
