@@ -763,7 +763,7 @@ class Y2zim:
 
     def download_subtitles(self, video_id, options):
         """download subtitles for a video"""
-        
+        video_id = video_id["id"]
         options_copy = options.copy()
         options_copy.update({"skip_download": True, "writethumbnail": False})
         try:
