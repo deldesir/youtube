@@ -13,6 +13,8 @@ import re
 from gettext import gettext as _
 from pathlib import Path
 
+from PIL import Image
+
 import jinja2
 import yt_dlp
 from babel.dates import format_date
@@ -890,7 +892,7 @@ class Y2zim:
             width=48,
             height=48,
             method="thumbnail",
-            dst=self.build_dir.joinpath("favicon.jpg"),
+            dst=self.build_dir.joinpath("favicon.png"),
         )
 
     def make_html_files(self, actual_videos_ids):
