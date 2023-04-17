@@ -39,6 +39,12 @@ def main():
         default=False,
     )
     parser.add_argument(
+        "--all-subtitles",
+        help="Include auto-generated subtitles",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
         "--pagination",
         help="Number of videos per page",
         type=int,
