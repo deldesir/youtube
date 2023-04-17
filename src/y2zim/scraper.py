@@ -333,8 +333,6 @@ class Y2zim:
                 logger.info("removing temp folder")
                 shutil.rmtree(self.build_dir, ignore_errors=True)
 
-        make_table(all_videos, self.name)
-
         if not self.keep_build_dir:
             logger.info("removing temp folder")
             shutil.rmtree(self.build_dir, ignore_errors=True)
