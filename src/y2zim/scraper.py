@@ -1017,14 +1017,14 @@ class Y2zim:
         # write list of videos in data.js
         def to_data_js(video):
             return {
-                "id": video["contentDetails"]["videoId"],
+                "id": video["id"],
                 "title": video["snippet"]["title"],
                 "slug": get_slug(video["snippet"]["title"]),
                 "description": video["snippet"]["description"],
-                "subtitles": get_subtitles(video["contentDetails"]["videoId"]),
+                "subtitles": get_subtitles(video["id"]),
                 "thumbnail": str(
                     Path("videos").joinpath(
-                        video["contentDetails"]["videoId"], "video.webp"
+                        video["id"], "video.webp"
                     )
                 ),
             }
