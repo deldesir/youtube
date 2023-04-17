@@ -813,8 +813,12 @@ class Y2zim:
     def update_metadata(self):
         # we use title, description, profile and banner of channel/user
         # or channel of first playlist
+        if self.youtube_id is not None:
+            videos_json = load_json(self.cache_dir, "videos")
+            self.main_channel_id = videos_json[1]["channelId"]
         try:
             main_channel_json = get_channel_json(self.main_channel_id)
+
         except KeyError:
             main_channel_json = {"snippet": {"title": "Unknown", "description": ""}}
         else:
