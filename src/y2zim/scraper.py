@@ -944,8 +944,11 @@ class Y2zim:
         env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(str(self.templates_dir)), autoescape=True
         )
-
-        videos = load_json(self.cache_dir, "videos").values()
+        if self.youtube_id is None:
+            # 'list' object has no attribute 'values' when youtube_id is None
+            videos = load_json(self.cache_dir, "videos")
+        else:
+            videos = load_json(self.cache_dir, "videos").values()
         # filter videos so we only include the ones we could retrieve
         videos = list(filter(is_present, videos))
         videos_channels = load_json(self.cache_dir, "videos_channels")
@@ -953,12 +956,12 @@ class Y2zim:
         # filter videos to exclude those for which we have no channel (#76)
         videos = list(filter(has_channel, videos))
         for video in videos:
-            video_id = video["contentDetails"]["videoId"]
+            video_id = video["id"]
             title = video["snippet"]["title"]
             slug = get_slug(title)
             description = video["snippet"]["description"]
             publication_date = dt_parser.parse(
-                video["contentDetails"]["videoPublishedAt"]
+                video["snippet"]["publishedAt"]
             )
             author = videos_channels[video_id]
             subtitles = get_subtitles(video_id)
@@ -1028,29 +1031,38 @@ class Y2zim:
 
         with open(self.assets_dir.joinpath("data.js"), "w", encoding="utf-8") as fp:
             # write all playlists as they are
-            for playlist in self.playlists:
-                # retrieve list of videos for PL
-                playlist_videos = load_json(
-                    self.cache_dir, f"playlist_{playlist.playlist_id}_videos"
-                )
-                # replace video titles if --custom-titles is used
-                if self.custom_titles:
-                    replace_titles(playlist_videos, self.custom_titles)
-                # filtering-out missing ones (deleted or not downloaded)
-                playlist_videos = list(filter(skip_deleted_videos, playlist_videos))
-                playlist_videos = list(filter(is_present, playlist_videos))
-                playlist_videos = list(filter(has_channel, playlist_videos))
-                # sorting them based on playlist
-                playlist_videos.sort(key=lambda v: v["snippet"]["position"])
-
+            if self.youtube_id is None:
+                # there is no playlist, so we need to create one with all videos
                 fp.write(
-                    "var json_{slug} = {json_str};\n".format(
-                        slug=playlist.slug,
-                        json_str=json.dumps(
-                            list(map(to_data_js, playlist_videos)), indent=4
-                        ),
+                    "var json_all = {json_str};\n".format(
+                        json_str=json.dumps(list(map(to_data_js, videos)))
                     )
                 )
+            else:
+
+                for playlist in self.playlists:
+                    # retrieve list of videos for PL
+                    playlist_videos = load_json(
+                        self.cache_dir, f"playlist_{playlist.playlist_id}_videos"
+                    )
+                    # replace video titles if --custom-titles is used
+                    if self.custom_titles:
+                        replace_titles(playlist_videos, self.custom_titles)
+                    # filtering-out missing ones (deleted or not downloaded)
+                    playlist_videos = list(filter(skip_deleted_videos, playlist_videos))
+                    playlist_videos = list(filter(is_present, playlist_videos))
+                    playlist_videos = list(filter(has_channel, playlist_videos))
+                    # sorting them based on playlist
+                    playlist_videos.sort(key=lambda v: v["snippet"]["position"])
+
+                    fp.write(
+                        "var json_{slug} = {json_str};\n".format(
+                            slug=playlist.slug,
+                            json_str=json.dumps(
+                                list(map(to_data_js, playlist_videos)), indent=4
+                            ),
+                        )
+                    )
 
         # write a metadata.json file with some content-related data
         with open(
