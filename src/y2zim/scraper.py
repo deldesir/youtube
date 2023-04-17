@@ -816,8 +816,6 @@ class Y2zim:
         if self.youtube_id is None:
             channels_json = load_json(self.cache_dir, "videos_channels")
             # use the second key
-            # with open(self.cache_dir / "videos_channels.json") as f:
-            #     channels_json = json.load(f)
             self.main_channel_id = list(channels_json.values())[1]["channelId"]
             logger.debug(f"Main channel id: {self.main_channel_id}")
         try:
@@ -835,12 +833,12 @@ class Y2zim:
         # otherwise, use main_channel's details.
         auto_title = (
             self.playlists[0].title
-            if self.is_playlist and len(self.playlists) == 1
+            if self.collection_type == "playlist" and len(self.playlists) == 1
             else main_channel_json["snippet"]["title"].strip()
         )
         auto_description = (
             clean_text(self.playlists[0].description)
-            if self.is_playlist and len(self.playlists) == 1
+            if self.collection_type == "playlist" and len(self.playlists) == 1
             else clean_text(main_channel_json["snippet"]["description"])
         )
         self.title = self.title or auto_title or "-"
