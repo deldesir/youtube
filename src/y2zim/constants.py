@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# vim: ai ts=4 sts=4 et sw=4 nu
+import json
 
 import logging
 import pathlib
@@ -15,10 +13,6 @@ with open(ROOT_DIR.joinpath("VERSION"), "r") as fh:
 
 SCRAPER = f"{NAME} {VERSION}"
 
-CHANNEL = "channel"
-PLAYLIST = "playlist"
-USER = "user"
-
 # Youtube uses some non-standard language codes
 YOUTUBE_LANG_MAP = {
     "iw": "he",  # Hebrew
@@ -31,8 +25,13 @@ YOUTUBE_LANG_MAP = {
     "sh": "srp",  # Serbian
 }
 
-logger = getLogger(NAME, level=logging.DEBUG)
+logger = getLogger(NAME, level=logging.DEBUG, file='/output_dir/y2zim.log')
 
+
+with open("/usr/local/etc/ytable/config.json") as f:
+    config = json.load(f)
+API_KEY = config["API_KEY"]
+    
 
 class Youtube:
     def __init__(self):

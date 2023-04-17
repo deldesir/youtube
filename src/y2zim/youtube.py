@@ -1,7 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# vim: ai ts=4 sts=4 et sw=4 nu
-
 import requests
 from contextlib import ExitStack
 from dateutil import parser as dt_parser
@@ -9,7 +5,7 @@ from pytube import extract
 from zimscraperlib.download import stream_file
 from zimscraperlib.image.transformation import resize_image
 
-from .constants import CHANNEL, PLAYLIST, USER, YOUTUBE, logger
+from .constants import YOUTUBE, logger
 from .utils import get_slug, load_json, save_json
 
 YOUTUBE_API = "https://www.googleapis.com/youtube/v3"
@@ -175,7 +171,7 @@ def get_videos_json(playlist_id):
             PLAYLIST_ITEMS_API,
             params={
                 "playlistId": playlist_id,
-                "part": "snippet,contentDetails",
+                "part": "snippet,contentDetails,status",
                 "key": YOUTUBE.api_key,
                 "maxResults": RESULTS_PER_PAGE,
                 "pageToken": page_token,
@@ -192,6 +188,30 @@ def get_videos_json(playlist_id):
 
     save_json(YOUTUBE.cache_dir, fname, items)
     return items
+
+
+def get_video_json(videos_ids):
+    """fetch or retieve-save and return the Youtube VideoResult JSON"""
+    all_videos_json = []
+    logger.debug(f"we will fetch {len(videos_ids)} videos")
+    # we fetch the videos in chunks of 50
+    for i in range(0, len(videos_ids), 50):
+        video_ids_chunk = videos_ids[i : i + 50]
+        req = requests.get(
+            VIDEOS_API,
+            params={
+                "id": ",".join(video_ids_chunk),
+                "part": "snippet",
+                "key": YOUTUBE.api_key,
+            },
+        )
+        if req.status_code > 400:
+            logger.error(f"HTTP {req.status_code} Error response: {req.text}")
+        req.raise_for_status()
+        videos_json = req.json()
+        all_videos_json += videos_json["items"]
+    return all_videos_json
+
 
 # Replace some video titles reading 2 text files, one for the video id and one for the title (called with --custom-titles)
 def replace_titles(items, custom_titles):
@@ -268,43 +288,60 @@ def get_videos_authors_info(videos_ids):
 
     def retrieve_videos_for(videos_ids):
         """{videoId: {channelId: channelTitle}} for all videos_ids"""
+        # req_items = {}
+        # page_token = None
+        # while True:
+        #     req = requests.get(
+        #         VIDEOS_API,
+        #         params={
+        #             "id": ",".join(videos_ids),
+        #             "part": "snippet",
+        #             "key": YOUTUBE.api_key,
+        #             "maxResults": RESULTS_PER_PAGE,
+        #             "pageToken": page_token,
+        #         },
+        #     )
+        #     if req.status_code > 400:
+        #         logger.error(f"HTTP {req.status_code} Error response: {req.text}")
+        #     req.raise_for_status()
+        #     videos_json = req.json()
+        #     for item in videos_json["items"]:
+        #         req_items.update(
+        #             {
+        #                 item["id"]: {
+        #                     "channelId": item["snippet"]["channelId"],
+        #                     "channelTitle": item["snippet"]["channelTitle"],
+        #                 }
+        #             }
+        #         )
+        #     page_token = videos_json.get("nextPageToken")
+        #     if not page_token:
+        #         break
+        # return req_items
+
+        # get them from the cache instead
         req_items = {}
-        page_token = None
-        while True:
-            req = requests.get(
-                VIDEOS_API,
-                params={
-                    "id": ",".join(videos_ids),
-                    "part": "snippet",
-                    "key": YOUTUBE.api_key,
-                    "maxResults": RESULTS_PER_PAGE,
-                    "pageToken": page_token,
-                },
-            )
-            if req.status_code > 400:
-                logger.error(f"HTTP {req.status_code} Error response: {req.text}")
-            req.raise_for_status()
-            videos_json = req.json()
-            for item in videos_json["items"]:
-                req_items.update(
-                    {
-                        item["id"]: {
-                            "channelId": item["snippet"]["channelId"],
-                            "channelTitle": item["snippet"]["channelTitle"],
-                        }
+        videos_items = load_json(YOUTUBE.cache_dir, "videos")
+        for video in videos_items:
+            req_items.update(
+                {
+                    video["id"]: {
+                        "channelId": video["snippet"]["channelId"],
+                        "channelTitle": video["snippet"]["channelTitle"],
                     }
-                )
-            page_token = videos_json.get("nextPageToken")
-            if not page_token:
-                break
+                }
+            )
         return req_items
 
-    # split it over n requests so that each request includes
-    # as most MAX_VIDEOS_PER_REQUEST videoId to avoid too-large URI issue
-    for interv in range(0, len(videos_ids), MAX_VIDEOS_PER_REQUEST):
-        items.update(
-            retrieve_videos_for(videos_ids[interv : interv + MAX_VIDEOS_PER_REQUEST])
-        )
+    # # split it over n requests so that each request includes
+    # # as most MAX_VIDEOS_PER_REQUEST videoId to avoid too-large URI issue
+    # for interv in range(0, len(videos_ids), MAX_VIDEOS_PER_REQUEST):
+    #     items.update(
+    #         retrieve_videos_for(videos_ids[interv : interv + MAX_VIDEOS_PER_REQUEST])
+    #     )
+
+    # get them all in one request
+    items = retrieve_videos_for(videos_ids)
 
     save_json(YOUTUBE.cache_dir, "videos_channels", items)
 
@@ -341,10 +378,11 @@ def save_channel_branding(channels_dir, channel_id, save_banner=False):
 
 
 def skip_deleted_videos(item):
-    """filter func to filter-out deleted videos from list"""
+    """filter func to filter-out deleted, unavailable or private videos"""
     return (
         item["snippet"]["title"] != "Deleted video"
         and item["snippet"]["description"] != "This video is unavailable."
+        and item["status"]["privacyStatus"] != "private"  
     )
 
 
@@ -362,8 +400,8 @@ def extract_playlists_details_from(collection_type, youtube_id):
 
     uploads_playlist_id = None
     main_channel_id = None
-    if collection_type == USER or collection_type == CHANNEL:
-        if collection_type == USER:
+    if collection_type == "user" or collection_type == "channel":
+        if collection_type == "user":
             # youtube_id is a Username, fetch actual channelId through channel
             channel_json = get_channel_json(youtube_id, for_username=True)
         else:
@@ -377,7 +415,7 @@ def extract_playlists_details_from(collection_type, youtube_id):
         # we always include uploads playlist (contains everything)
         playlist_ids += [channel_json["contentDetails"]["relatedPlaylists"]["uploads"]]
         uploads_playlist_id = playlist_ids[-1]
-    elif collection_type == PLAYLIST:
+    elif collection_type == "playlist":
         playlist_ids = youtube_id.split(",")
         main_channel_id = Playlist.from_id(playlist_ids[0]).creator_id
     else:

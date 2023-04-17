@@ -1,23 +1,15 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# vim: ai ts=4 sts=4 et sw=4 nu
-
-"""
-    create project on Google Developer console
-    Add Youtube Data API v3 to it
-    Create credentials (Other non-UI, Public Data)
-"""
-
 import concurrent.futures
 import datetime
 import functools
 import json
 import locale
 import os
-import re
 import shutil
 import subprocess
-import tempfile
+
+import csv
+import re
+
 from gettext import gettext as _
 from pathlib import Path
 
@@ -37,21 +29,30 @@ from zimscraperlib.video.presets import VideoMp4Low, VideoWebmLow
 from zimscraperlib.zim import make_zim_file
 
 from .constants import (
-    CHANNEL,
-    PLAYLIST,
+    API_KEY,
     ROOT_DIR,
     SCRAPER,
-    USER,
     YOUTUBE_LANG_MAP,
     logger,
 )
-from .processing import post_process_video, process_thumbnail
-from .utils import clean_text, get_slug, load_json, save_json
+from .processing import (
+    post_process_video,
+    process_thumbnail,
+)
+from .utils import (
+    clean_text,
+    get_slug,
+    load_json,
+    save_json,
+    get_id_type,
+    check_file_type,
+)
 from .youtube import (
     credentials_ok,
     extract_playlists_details_from,
     get_channel_json,
     get_videos_authors_info,
+    get_video_json,
     get_videos_json,
     replace_titles,
     save_channel_branding,
@@ -60,12 +61,11 @@ from .youtube import (
 )
 
 
-class Youtube2Zim:
+class Y2zim:
     def __init__(
         self,
-        collection_type,
         youtube_id,
-        api_key,
+        file,
         video_format,
         low_quality,
         nb_videos_per_page,
@@ -75,7 +75,6 @@ class Youtube2Zim:
         no_zim,
         fname,
         debug,
-        tmp_dir,
         keep_build_dir,
         max_concurrency,
         youtube_store,
@@ -97,9 +96,9 @@ class Youtube2Zim:
         secondary_color=None,
     ):
         # data-retrieval info
-        self.collection_type = collection_type
+        self.file = file
         self.youtube_id = youtube_id
-        self.api_key = api_key
+        self.api_key = API_KEY
         self.dateafter = dateafter
 
         # video-encoding info
@@ -126,16 +125,20 @@ class Youtube2Zim:
 
         # directory setup
         self.output_dir = Path(output_dir).expanduser().resolve()
-        if tmp_dir:
-            tmp_dir = Path(tmp_dir).expanduser().resolve()
-            tmp_dir.mkdir(parents=True, exist_ok=True)
-        self.build_dir = Path(tempfile.mkdtemp(dir=tmp_dir))
+        if self.file is not None and youtube_id is None:
+            tmp_dir = Path(self.name).expanduser().resolve()
+        else:
+            tmp_dir = Path(youtube_id).expanduser().resolve()
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        self.build_dir = tmp_dir.joinpath("build")
+        self.build_dir.mkdir(parents=True, exist_ok=True)
+
 
         # process-related
         self.playlists = []
         self.uploads_playlist_id = None
         self.videos_ids = []
-        self.main_channel_id = None  # use for branding
+        self.main_channel_id = None # banding
 
         # debug/devel options
         self.no_zim = no_zim
@@ -144,6 +147,7 @@ class Youtube2Zim:
         self.max_concurrency = max_concurrency
 
         # update youtube credentials store
+        self.collection_type = get_id_type(self.youtube_id)
         youtube_store.update(
             build_dir=self.build_dir, api_key=self.api_key, cache_dir=self.cache_dir
         )
@@ -164,10 +168,6 @@ class Youtube2Zim:
                 "defaulting to en_US"
             )
             self.locale = setlocale(ROOT_DIR, "en")
-
-    @property
-    def root_dir(self):
-        return ROOT_DIR
 
     @property
     def templates_dir(self):
@@ -202,20 +202,8 @@ class Youtube2Zim:
         return self.build_dir.joinpath("banner.jpg")
 
     @property
-    def is_user(self):
-        return self.collection_type == USER
-
-    @property
-    def is_channel(self):
-        return self.collection_type == CHANNEL
-
-    @property
-    def is_playlist(self):
-        return self.collection_type == PLAYLIST
-
-    @property
     def is_single_channel(self):
-        if self.is_channel or self.is_user:
+        if self.collection_type == "channel" or self.collection_type == "user":
             return True
         return len(list(set([pl.creator_id for pl in self.playlists]))) == 1
 
@@ -242,49 +230,31 @@ class Youtube2Zim:
             + sorted_playlists[0:index]
             + sorted_playlists[index + 1 :]
         )
-
+    
     def run(self):
-        """execute the scraper step by step"""
-
-        self.validate_id()
-
-        # validate dateafter input
-        self.validate_dateafter_input()
-
-        logger.info(
-            f"starting youtube scraper for {self.collection_type}#{self.youtube_id}"
-        )
-        logger.info("preparing build folder at {}".format(self.build_dir.resolve()))
-        self.prepare_build_folder()
-
-        logger.info("testing Youtube credentials")
-        if not credentials_ok():
-            raise ValueError("Unable to connect to Youtube API v3. check `API_KEY`.")
-
-        if self.s3_url_with_credentials and not self.s3_credentials_ok():
-            raise ValueError("Unable to connect to Optimization Cache. Check its URL.")
+        """do the job"""
+        # if youtube_id is not None, run this
+        if self.youtube_id is not None and self.file is None:
+                self.youtube()
+        # both can't be run at the same time and one of them is required
+        elif self.youtube_id is None and self.file is None:
+            raise ValueError("YoutubeId or File is required")
+        elif self.youtube_id is not None and self.file is not None:
+            raise ValueError("YoutubeId and File can't be used at the same time")
 
         # fail early if supplied branding files are missing
         self.check_branding_values()
-
-        logger.info("compute playlists list to retrieve")
-        self.extract_playlists()
-
-        logger.info(
-            ".. {} playlists:\n   {}".format(
-                len(self.playlists),
-                "\n   ".join([p.playlist_id for p in self.playlists]),
-            )
-        )
-
+        
         logger.info("compute list of videos")
         self.extract_videos_list()
 
         nb_videos_msg = f".. {len(self.videos_ids)} videos"
-        if self.dateafter.start.year != 1:
-            nb_videos_msg += (
-                f" in date range: {self.dateafter.start} - {datetime.date.today()}"
-            )
+        # if file, we don't have dateafter
+        if self.youtube_id is not None:
+            if self.dateafter.start.year != 1:
+                nb_videos_msg += (
+                    f" in date range: {self.dateafter.start} - {datetime.date.today()}"
+                )
         logger.info(f"{nb_videos_msg}.")
 
         # download videos (and recompress)
@@ -341,7 +311,7 @@ class Youtube2Zim:
                 description=self.description,
                 language=self.language,
                 creator=self.creator,
-                publisher="Kiwix",
+                publisher="IIAB",
                 tags=self.tags,
                 scraper=SCRAPER,
             )
@@ -350,7 +320,48 @@ class Youtube2Zim:
                 logger.info("removing temp folder")
                 shutil.rmtree(self.build_dir, ignore_errors=True)
 
-        logger.info("all done!")
+        make_table(all_videos, self.name)
+
+        if not self.keep_build_dir:
+            logger.info("removing temp folder")
+            shutil.rmtree(self.build_dir, ignore_errors=True)
+
+        logger.info("all done!")    
+
+    def youtube(self):
+        """execute the program step by step"""
+
+        self.validate_id()
+
+        # validate dateafter input
+        self.validate_dateafter_input()
+
+        logger.info(
+            f"starting y2zim for {self.collection_type}#{self.youtube_id}"
+        )
+
+        logger.info("preparing build folder at {}".format(self.build_dir.resolve()))
+        self.prepare_build_folder()
+
+        logger.info("testing Youtube credentials")
+        if not credentials_ok():
+            raise ValueError("Unable to connect to Youtube API v3. check `API_KEY`.")
+
+        if self.s3_url_with_credentials and not self.s3_credentials_ok():
+            raise ValueError("Unable to connect to Optimization Cache. check its url.")
+        
+        logger.info("compute playlists list to retrieve")
+        self.extract_playlists()
+
+        logger.info(
+            ".. {} playlists:\n   {}".format(
+                len(self.playlists),
+                "\n   ".join([p.playlist_id for p in self.playlists]),
+            )
+        )
+
+        logger.info("retrieve videos list")
+        self.save_videos_json()        
 
     def s3_credentials_ok(self):
         logger.info("testing S3 Optimization Cache credentials")
@@ -376,12 +387,13 @@ class Youtube2Zim:
             )
             raise ValueError(f"Invalid dateafter input: {exc}")
 
+
     def validate_id(self):
-        # space not allowed in youtube-ID
-        self.youtube_id = self.youtube_id.replace(" ", "")
         if self.collection_type == "channel" and len(self.youtube_id) > 24:
             raise ValueError("Invalid ChannelId")
         if "," in self.youtube_id and self.collection_type != "playlist":
+            raise ValueError("Invalid YoutubeId")
+        if not self.collection_type:
             raise ValueError("Invalid YoutubeId")
 
     def prepare_build_folder(self):
@@ -466,29 +478,71 @@ class Youtube2Zim:
             self.uploads_playlist_id,
         ) = extract_playlists_details_from(self.collection_type, self.youtube_id)
 
-    def extract_videos_list(self):
-        all_videos = load_json(self.cache_dir, "videos")
-        if all_videos is None:
-            all_videos = {}
+    def save_videos_json(self):
+        """save videos.json file in build folder"""
+        all_videos = {}
+        # we only return video_ids that we'll use later on. per-playlist JSON stored
+        for playlist in self.playlists:
+            videos_json = get_videos_json(playlist.playlist_id)
+            # we filter out videos that are out of range and deleted
+            skip_outofrange = functools.partial(
+                skip_outofrange_videos, self.dateafter
+            )
+            filter_videos = filter(skip_outofrange, videos_json)
+            filter_videos = filter(skip_deleted_videos, filter_videos)
+            all_videos.update(
+                {v["contentDetails"]["videoId"]: v for v in filter_videos}
+            )
+        save_json(self.cache_dir, "videos", all_videos)
 
-            # we only return video_ids that we'll use later on. per-playlist JSON stored
-            for playlist in self.playlists:
-                videos_json = get_videos_json(playlist.playlist_id)
-                # filter in videos within date range and filter away deleted videos
-                # we replace videos titles if --custom-titles is used
-                if self.custom_titles:
-                    replace_titles(videos_json, self.custom_titles)
-                # we filter out videos that are out of range and deleted
-                skip_outofrange = functools.partial(
-                    skip_outofrange_videos, self.dateafter
-                )
-                filter_videos = filter(skip_outofrange, videos_json)
-                filter_videos = filter(skip_deleted_videos, filter_videos)
-                all_videos.update(
-                    {v["contentDetails"]["videoId"]: v for v in filter_videos}
-                )
-            save_json(self.cache_dir, "videos", all_videos)
-        self.videos_ids = [*all_videos.keys()]  # unpacking so it's subscriptable
+    def extract_videos_list(self):
+        """process a list of videos ids from user request"""
+        if self.file is not None:
+            # check first what kind of file we have (csv or txt)
+            if check_file_type(self.file) == "csv":
+                # read the csv file and extract the video ids
+                with open(self.file, "r") as f:
+                    reader = csv.reader(f)
+                    # check if the first line does not contain a url or a video_id
+                    if not re.match(r"^(https://www.youtube.com/watch\?v=|[\w-]{11}$)", next(reader)[0]):
+                        logger.debug("csv file has a header")
+                        self.videos_ids = [
+                            line[0].replace("https://www.youtube.com/watch?v=", "") for line in reader
+                            ]
+                    else:
+                        logger.debug("csv file has no header")
+                        self.videos_ids = [
+                            line[0].replace("https://www.youtube.com/watch?v=", "") for line in reader
+                            ]
+
+            if check_file_type(self.file) == "txt":
+                with open(self.file, "r") as f:
+                    self.videos_ids = [
+                        line.replace("https://www.youtube.com/watch?v=", "")
+                        for line in f.readlines()
+                    ]
+            # let's create videos.json file
+            all_videos = get_video_json(self.videos_ids)
+        
+        # if we don't have a file, we load the videos.json file
+        else:
+
+            all_videos = load_json(self.cache_dir, "videos")
+            self.videos_ids = [video["contentDetails"]["videoId"] for video in all_videos.values()]
+            all_videos = get_video_json(self.videos_ids)
+
+        # we replace titles if needed
+        if self.custom_titles:
+            replace_titles(all_videos, self.custom_titles)
+        # # we filter out videos that are out of range and deleted
+        # skip_outofrange = functools.partial(
+        #     skip_outofrange_videos, self.dateafter
+        # )
+        # filter_videos = filter(skip_outofrange, all_videos)
+        # filter_videos = filter(skip_deleted_videos, filter_videos)
+        # all_videos = {v["id"]: v for v in filter_videos}
+        save_json(self.cache_dir, "videos", all_videos)
+        self.videos_ids = [*all_videos.keys()]
 
     def download_video_files(self, max_concurrency):
 
