@@ -814,7 +814,9 @@ class Y2zim:
         # we use title, description, profile and banner of channel/user
         # or channel of first playlist
         if self.youtube_id is not None:
-            channels_json = load_json(self.cache_dir, "videos_channels")
+            # use the second key
+            with open(self.cache_dir / "videos_channels.json") as f:
+                channels_json = json.load(f)
             self.main_channel_id = list(channels_json.values())[1]["channelId"]
             logger.debug(f"Main channel id: {self.main_channel_id}")
         try:
