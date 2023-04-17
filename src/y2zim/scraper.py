@@ -176,7 +176,10 @@ class Y2zim:
 
     @property
     def templates_dir(self):
-        return self.root_dir.joinpath("templates")
+        # create templates dir if not exists
+        templates_dir = self.root_dir.joinpath("templates")
+        templates_dir.mkdir(parents=True, exist_ok=True)
+        return templates_dir
 
     @property
     def assets_src_dir(self):
