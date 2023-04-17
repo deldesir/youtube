@@ -1042,44 +1042,76 @@ class Y2zim:
             }
 
         with open(self.assets_dir.joinpath("data.js"), "w", encoding="utf-8") as fp:
-            # write all playlists as they are
-            if self.youtube_id is None:
-                # there is no playlist, so we need to create one
-                # no need to waste quota on this
-                playlist_id = "all_videos"
-                playlist_items = [
-                    {
-                        "snippet": {
-                            "title": video["snippet"]["title"],
-                            "position": i,
-                        },
-                        "contentDetails": {"videoId": video["id"]},
-                    }
-                    for i, video in enumerate(videos)
-                ]
-                # write the json file
-                with open(
-                    self.cache_dir.joinpath(f"playlist_{playlist_id}_videos.json"),
-                    "w",
-                    encoding="utf-8",
-                ) as fp:
-                    json.dump(playlist_items, fp)
+            # # write all playlists as they are
+            # if self.youtube_id is None:
+            #     # there is no playlist, so we need to create one
+            #     # no need to waste quota on this
+            #     playlist_id = "all_videos"
+            #     playlist_items = [
+            #         {
+            #             "snippet": {
+            #                 "title": video["snippet"]["title"],
+            #                 "position": i,
+            #             },
+            #             "contentDetails": {"videoId": video["id"]},
+            #         }
+            #         for i, video in enumerate(videos)
+            #     ]
+            #     # write the json file
+            #     with open(
+            #         self.cache_dir.joinpath(f"playlist_{playlist_id}_videos.json"),
+            #         "w",
+            #         encoding="utf-8",
+            #     ) as fp:
+            #         json.dump(playlist_items, fp)
 
-                # create the fake playlist
-                self.playlists.append(
-                    Playlist(
-                        playlist_id=playlist_id,
-                        slug="all_videos",
-                        title=_("All videos"),
-                        description="",
-                    )
-                )
+            #     # create the fake playlist
+            #     self.playlists.append(
+            #         Playlist(
+            #             playlist_id=playlist_id,
+            #             slug="all_videos",
+            #             title=_("All videos"),
+            #             description="",
+            #         )
+            #     )
 
             for playlist in self.playlists:
                 # retrieve list of videos for PL
                 playlist_videos = load_json(
                     self.cache_dir, f"playlist_{playlist.playlist_id}_videos"
                 )
+                if self.youtube_id is None and playlist_videos is None:
+                    # there is no playlist, so we need to create one
+                    # no need to waste quota on this
+                    playlist_id = "all_videos"
+                    playlist_items = [
+                        {
+                            "snippet": {
+                                "title": video["snippet"]["title"],
+                                "position": i,
+                            },
+                            "contentDetails": {"videoId": video["id"]},
+                        }
+                        for i, video in enumerate(videos)
+                    ]
+                    # write the json file
+                    with open(
+                        self.cache_dir.joinpath(f"playlist_{playlist_id}_videos.json"),
+                        "w",
+                        encoding="utf-8",
+                    ) as fp:
+                        json.dump(playlist_items, fp)
+
+                    # create the fake playlist
+                    self.playlists.append(
+                        Playlist(
+                            playlist_id=playlist_id,
+                            slug="all_videos",
+                            title=_("All videos"),
+                            description="",
+                        )
+                    )
+                    playlist_videos = playlist_items
                 # replace video titles if --custom-titles is used
                 if self.custom_titles:
                     replace_titles(playlist_videos, self.custom_titles)
@@ -1109,8 +1141,8 @@ class Y2zim:
         remove_unused_videos(videos)
 
 class Playlist:
-                def __init__(self, playlist_id, slug, title, description):
-                    self.playlist_id = playlist_id
-                    self.slug = slug
-                    self.title = title
-                    self.description = description
+    def __init__(self, playlist_id, slug, title, description):
+        self.playlist_id = playlist_id
+        self.slug = slug
+        self.title = title
+        self.description = description
