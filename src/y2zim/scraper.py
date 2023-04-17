@@ -1044,37 +1044,61 @@ class Y2zim:
         with open(self.assets_dir.joinpath("data.js"), "w", encoding="utf-8") as fp:
             # write all playlists as they are
             if self.youtube_id is None:
-                # there is no playlist, so we need to create one with all videos
-                fp.write(
-                    "var json_all = {json_str};\n".format(
-                        json_str=json.dumps(list(map(to_data_js, videos)))
+                # there is no playlist, so we need to create one
+                # no need to waste quota on this
+                playlist_id = "all_videos"
+                playlist_items = [
+                    {
+                        "snippet": {
+                            "title": video["snippet"]["title"],
+                            "position": i,
+                        },
+                        "contentDetails": {"videoId": video["id"]},
+                    }
+                    for i, video in enumerate(videos)
+                ]
+                # write the json file
+                with open(
+                    self.cache_dir.joinpath(f"playlist_{playlist_id}_videos.json"),
+                    "w",
+                    encoding="utf-8",
+                ) as fp:
+                    json.dump(playlist_items, fp)
+
+                # create the fake playlist
+                self.playlists.append(
+                    Playlist(
+                        playlist_id=playlist_id,
+                        slug="all_videos",
+                        title=_("All videos"),
+                        description="",
                     )
                 )
-            else:
+            
 
-                for playlist in self.playlists:
-                    # retrieve list of videos for PL
-                    playlist_videos = load_json(
-                        self.cache_dir, f"playlist_{playlist.playlist_id}_videos"
-                    )
-                    # replace video titles if --custom-titles is used
-                    if self.custom_titles:
-                        replace_titles(playlist_videos, self.custom_titles)
-                    # filtering-out missing ones (deleted or not downloaded)
-                    playlist_videos = list(filter(skip_deleted_videos, playlist_videos))
-                    playlist_videos = list(filter(is_present, playlist_videos))
-                    playlist_videos = list(filter(has_channel, playlist_videos))
-                    # sorting them based on playlist
-                    playlist_videos.sort(key=lambda v: v["snippet"]["position"])
+            for playlist in self.playlists:
+                # retrieve list of videos for PL
+                playlist_videos = load_json(
+                    self.cache_dir, f"playlist_{playlist.playlist_id}_videos"
+                )
+                # replace video titles if --custom-titles is used
+                if self.custom_titles:
+                    replace_titles(playlist_videos, self.custom_titles)
+                # filtering-out missing ones (deleted or not downloaded)
+                playlist_videos = list(filter(skip_deleted_videos, playlist_videos))
+                playlist_videos = list(filter(is_present, playlist_videos))
+                playlist_videos = list(filter(has_channel, playlist_videos))
+                # sorting them based on playlist
+                playlist_videos.sort(key=lambda v: v["snippet"]["position"])
 
-                    fp.write(
-                        "var json_{slug} = {json_str};\n".format(
-                            slug=playlist.slug,
-                            json_str=json.dumps(
-                                list(map(to_data_js, playlist_videos)), indent=4
-                            ),
-                        )
+                fp.write(
+                    "var json_{slug} = {json_str};\n".format(
+                        slug=playlist.slug,
+                        json_str=json.dumps(
+                            list(map(to_data_js, playlist_videos)), indent=4
+                        ),
                     )
+                )
 
         # write a metadata.json file with some content-related data
         with open(
