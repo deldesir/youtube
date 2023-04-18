@@ -1045,14 +1045,12 @@ class Y2zim:
             }
         
         if self.youtube_id is None:
-            custom_playlist = [
-                {
-                    "playlist_id": "PL4rQq4MQP1crXuPtruu_eijgOUUXhcUCP",
-                    "title": "Custom Playlist",
-                    "slug": "custom-playlist",
-                    "description": "Custom Playlist",
-                }
-            ]
+            custom_playlist = {
+                "playlist_id": "PL4rQq4MQP1crXuPtruu_eijgOUUXhcUCP",
+                "title": "Custom Playlist",
+                "slug": "custom-playlist",
+                "description": "Custom Playlist",
+            }
             self.playlists.append(custom_playlist)
             
         with open(self.assets_dir.joinpath("data.js"), "w", encoding="utf-8") as fp:
