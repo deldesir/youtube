@@ -1012,8 +1012,6 @@ class Y2zim:
         with open(self.build_dir.joinpath("home.html"), "w", encoding="utf-8") as fp:
             fp.write(html)
             logger.info("Homepage built")
-            # print homepage content
-            print(html)
 
         # rewrite app.js including `format`
         with open(self.assets_dir.joinpath("app.js"), "w", encoding="utf-8") as fp:
@@ -1085,14 +1083,24 @@ class Y2zim:
                 # sorting them based on playlist
                 playlist_videos.sort(key=lambda v: v["snippet"]["position"])
 
-                fp.write(
-                    "var json_{slug} = {json_str};\n".format(
-                        slug=playlist.slug,
-                        json_str=json.dumps(
-                            list(map(to_data_js, playlist_videos)), indent=4
-                        ),
+                if self.youtube_id is None:
+                    fp.write(
+                        "var json_{slug} = {json_str};\n".format(
+                            slug=playlist["slug"],
+                            json_str=json.dumps(
+                                list(map(to_data_js, playlist_videos)), indent=4
+                            ),
+                        )
                     )
-                )
+                else:
+                    fp.write(
+                        "var json_{slug} = {json_str};\n".format(
+                            slug=playlist.slug,
+                            json_str=json.dumps(
+                                list(map(to_data_js, playlist_videos)), indent=4
+                            ),
+                        )
+                    )
 
         # write a metadata.json file with some content-related data
         with open(
