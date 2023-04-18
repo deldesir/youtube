@@ -319,7 +319,7 @@ class Y2zim:
                 fpath=self.output_dir / self.fname,
                 name=self.name,
                 main_page="home.html",
-                illustration="favicon.png",
+                favicon="favicon.png",
                 title=self.title,
                 description=self.title,
                 language=self.language,
