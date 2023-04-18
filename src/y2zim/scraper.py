@@ -1057,40 +1057,40 @@ class Y2zim:
             
         with open(self.assets_dir.joinpath("data.js"), "w", encoding="utf-8") as fp:
         # write all playlists as they are
-        for playlist in self.playlists:
-            # retrieve list of videos for PL
-            if self.youtube_id is None:
-                playlist_videos = [
-                {
-                    "snippet": {
-                        "title": video["snippet"]["title"],
-                        "description": video["snippet"]["description"],
-                        "publishedAt": video["snippet"]["publishedAt"],
-                        "position": i,
-                    },
-                    "id": video["id"],
-                }
-                for i, video in enumerate(videos)
-            ]
-            else:
-                playlist_videos = load_json(
-                    self.cache_dir, f"playlist_{playlist.playlist_id}_videos"
-                )
-            # filtering-out missing ones (deleted or not downloaded)
-            playlist_videos = list(filter(skip_deleted_videos, playlist_videos))
-            playlist_videos = list(filter(is_present, playlist_videos))
-            playlist_videos = list(filter(has_channel, playlist_videos))
-            # sorting them based on playlist
-            playlist_videos.sort(key=lambda v: v["snippet"]["position"])
+            for playlist in self.playlists:
+                # retrieve list of videos for PL
+                if self.youtube_id is None:
+                    playlist_videos = [
+                    {
+                        "snippet": {
+                            "title": video["snippet"]["title"],
+                            "description": video["snippet"]["description"],
+                            "publishedAt": video["snippet"]["publishedAt"],
+                            "position": i,
+                        },
+                        "id": video["id"],
+                    }
+                    for i, video in enumerate(videos)
+                ]
+                else:
+                    playlist_videos = load_json(
+                        self.cache_dir, f"playlist_{playlist.playlist_id}_videos"
+                    )
+                # filtering-out missing ones (deleted or not downloaded)
+                playlist_videos = list(filter(skip_deleted_videos, playlist_videos))
+                playlist_videos = list(filter(is_present, playlist_videos))
+                playlist_videos = list(filter(has_channel, playlist_videos))
+                # sorting them based on playlist
+                playlist_videos.sort(key=lambda v: v["snippet"]["position"])
 
-            fp.write(
-                "var json_{slug} = {json_str};\n".format(
-                    slug=playlist.slug,
-                    json_str=json.dumps(
-                        list(map(to_data_js, playlist_videos)), indent=4
-                    ),
+                fp.write(
+                    "var json_{slug} = {json_str};\n".format(
+                        slug=playlist.slug,
+                        json_str=json.dumps(
+                            list(map(to_data_js, playlist_videos)), indent=4
+                        ),
+                    )
                 )
-            )
 
     # write a metadata.json file with some content-related data
     with open(
