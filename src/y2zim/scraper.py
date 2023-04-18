@@ -1092,11 +1092,11 @@ class Y2zim:
                     )
                 )
 
-    # write a metadata.json file with some content-related data
-    with open(
-        self.build_dir.joinpath("metadata.json"), "w", encoding="utf-8"
-    ) as fp:
-        json.dump({"video_format": self.video_format}, fp, indent=4)
+        # write a metadata.json file with some content-related data
+        with open(
+            self.build_dir.joinpath("metadata.json"), "w", encoding="utf-8"
+        ) as fp:
+            json.dump({"video_format": self.video_format}, fp, indent=4)
 
-    # clean videos left out in videos directory
-    remove_unused_videos(videos)
+        # clean videos left out in videos directory
+        remove_unused_videos(videos)
