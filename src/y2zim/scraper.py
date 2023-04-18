@@ -1045,109 +1045,58 @@ class Y2zim:
                     )
                 ),
             }
-
-        with open(self.assets_dir.joinpath("data.js"), "w", encoding="utf-8") as fp:
-            # # write all playlists as they are
-            # if self.youtube_id is None:
-            #     # there is no playlist, so we need to create one
-            #     # no need to waste quota on this
-            #     playlist_id = "all_videos"
-            #     playlist_items = [
-            #         {
-            #             "snippet": {
-            #                 "title": video["snippet"]["title"],
-            #                 "position": i,
-            #             },
-            #             "contentDetails": {"videoId": video["id"]},
-            #         }
-            #         for i, video in enumerate(videos)
-            #     ]
-            #     # write the json file
-            #     with open(
-            #         self.cache_dir.joinpath(f"playlist_{playlist_id}_videos.json"),
-            #         "w",
-            #         encoding="utf-8",
-            #     ) as fp:
-            #         json.dump(playlist_items, fp)
-
-            #     # create the fake playlist
-            #     self.playlists.append(
-            #         Playlist(
-            #             playlist_id=playlist_id,
-            #             slug="all_videos",
-            #             title=_("All videos"),
-            #             description="",
-            #         )
-            #     )
+        
+        if self.youtube_id is None:
+            custom_playlist = {
+                "playlist_id": "PL4rQq4MQP1crXuPtruu_eijgOUUXhcUCP",
+                "title": "Custom Playlist",
+                "slug": "custom-playlist",
+                "description": "Custom Playlist",
+            }
+            self.playlists.append(custom_playlist)
             
-            # there is no playlist, so we need to create one
-            # no need to waste quota on this
-            playlist_id = "all_videos"
-            playlist_items = [
+        with open(self.assets_dir.joinpath("data.js"), "w", encoding="utf-8") as fp:
+        # write all playlists as they are
+        for playlist in self.playlists:
+            # retrieve list of videos for PL
+            if self.youtube_id is None:
+                playlist_videos = [
                 {
                     "snippet": {
                         "title": video["snippet"]["title"],
+                        "description": video["snippet"]["description"],
+                        "publishedAt": video["snippet"]["publishedAt"],
                         "position": i,
                     },
-                    "contentDetails": {"videoId": video["id"]},
+                    "id": video["id"],
                 }
                 for i, video in enumerate(videos)
             ]
-            # write the json file
-            with open(
-                self.cache_dir.joinpath(f"playlist_{playlist_id}_videos.json"),
-                "w",
-                encoding="utf-8",
-            ) as fp:
-                json.dump(playlist_items, fp)
+            else:
+                playlist_videos = load_json(
+                    self.cache_dir, f"playlist_{playlist.playlist_id}_videos"
+                )
+            # filtering-out missing ones (deleted or not downloaded)
+            playlist_videos = list(filter(skip_deleted_videos, playlist_videos))
+            playlist_videos = list(filter(is_present, playlist_videos))
+            playlist_videos = list(filter(has_channel, playlist_videos))
+            # sorting them based on playlist
+            playlist_videos.sort(key=lambda v: v["snippet"]["position"])
 
-            # create the fake playlist
-            self.playlists.append(
-                Playlist(
-                    playlist_id=playlist_id,
-                    slug="all_videos",
-                    title=_("All videos"),
-                    description="",
+            fp.write(
+                "var json_{slug} = {json_str};\n".format(
+                    slug=playlist.slug,
+                    json_str=json.dumps(
+                        list(map(to_data_js, playlist_videos)), indent=4
+                    ),
                 )
             )
-            playlist_videos = playlist_items
-            print("SECOND PLAYLIST_VIIDEOS", playlist_videos)
 
-            for playlist in self.playlists:
-                # retrieve list of videos for PL
-                # playlist_videos = load_json(
-                #     self.cache_dir, f"playlist_{playlist.playlist_id}_videos"
-                # )
-                # print("FIRST PLAYLIST VIDEOS", playlist_videos)
-                # if self.youtube_id is None and playlist_videos is None:
-                    
-                # replace video titles if --custom-titles is used
-                if self.custom_titles:
-                    replace_titles(playlist_videos, self.custom_titles)
-                # sorting them based on playlist
-                playlist_videos.sort(key=lambda v: v["snippet"]["position"])
+    # write a metadata.json file with some content-related data
+    with open(
+        self.build_dir.joinpath("metadata.json"), "w", encoding="utf-8"
+    ) as fp:
+        json.dump({"video_format": self.video_format}, fp, indent=4)
 
-                fp.write(
-                    "var json_{slug} = {json_str};\n".format(
-                        slug=playlist.slug,
-                        json_str=json.dumps(
-                            list(map(to_data_js, playlist_videos)), indent=4
-                        ),
-                    )
-                )
-
-        # write a metadata.json file with some content-related data
-        with open(
-            self.build_dir.joinpath("metadata.json"), "w", encoding="utf-8"
-        ) as fp:
-            json.dump({"video_format": self.video_format}, fp, indent=4)
-
-        # clean videos left out in videos directory
-        remove_unused_videos(videos)
-
-class Playlist:
-    def __init__(self, playlist_id, slug, title, description):
-        self.playlist_id = playlist_id
-        self.slug = slug
-        self.title = title
-        self.description = description
+    # clean videos left out in videos directory
+    remove_unused_videos(videos)
