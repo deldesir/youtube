@@ -1075,9 +1075,9 @@ class Y2zim:
                         self.cache_dir, f"playlist_{playlist.playlist_id}_videos"
                     )
                 # filtering-out missing ones (deleted or not downloaded)
-                playlist_videos = list(filter(skip_deleted_videos, playlist_videos))
-                playlist_videos = list(filter(is_present, playlist_videos))
-                playlist_videos = list(filter(has_channel, playlist_videos))
+                # playlist_videos = list(filter(skip_deleted_videos, playlist_videos))
+                # playlist_videos = list(filter(is_present, playlist_videos))
+                # playlist_videos = list(filter(has_channel, playlist_videos))
                 # sorting them based on playlist
                 playlist_videos.sort(key=lambda v: v["snippet"]["position"])
 
